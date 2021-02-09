@@ -8,5 +8,13 @@ public class Player implements Serializable {
     String name;
     int pid;
 
-    String[] cards = new String[6];
+    String[] cards = new String[7];
+
+    Player(String n){
+        name = n;
+    }
+
+    public void print(){
+        System.out.println(name);
+    }
 }
