@@ -7,7 +7,7 @@ public class Player implements Serializable {
     private static final long serialVersionUID = 234L;
 
     String name;
-    int pid;
+    int pid = -1;
 
     ArrayList<Card> cards = new ArrayList<>();
 
@@ -29,5 +29,9 @@ public class Player implements Serializable {
             }
             System.out.print("\n");
         }
+    }
+
+    public String getName(){
+        return this.name;
     }
 }
