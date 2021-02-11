@@ -7,11 +7,9 @@ public class Message implements Serializable {
 
     public final String message;
     public final int pid;
-    public final int mid;
 
-    Message(String message, int pid, int mid){
+    Message(String message, int pid){
         this.message = message;
         this.pid = pid;
-        this.mid = mid;
     }
 }

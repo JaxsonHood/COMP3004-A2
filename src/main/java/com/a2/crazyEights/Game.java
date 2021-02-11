@@ -31,15 +31,12 @@ public class Game implements Serializable {
 
             // get the output stream from the socket.
             OutputStream outputStream = socket.getOutputStream();
-            // create an object output stream from the output stream so we can send an object through it
-            ObjectOutputStream objectOutputStream = new ObjectOutputStream(outputStream);
-            // Send the object
-            objectOutputStream.writeObject(new Player(name));
-
-            // get the input stream from the connected socket
             InputStream inputStream = socket.getInputStream();
-            // create a DataInputStream so we can read data from it.
+
+            ObjectOutputStream oos = new ObjectOutputStream(outputStream);
             ObjectInputStream ois = new ObjectInputStream(inputStream);
+
+            oos.writeObject(new Player(name));
 
              //Keep checking for new data
             while (true) {

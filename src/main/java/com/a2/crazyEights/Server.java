@@ -13,8 +13,13 @@ public class Server implements Runnable {
     protected Thread       runningThread= null;
 
     protected ArrayList<Player> players = new ArrayList<>();
-    protected ArrayList<Message> messages = new ArrayList<>();
     protected ArrayList<WorkerRunnable> runnables = new ArrayList<>();
+
+    private final String[] suits = {"S", "H", "D", "C"};
+    private final String[] ranks = {"A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"};
+
+    // Store all the cards in the deck
+    protected ArrayList<Card> allCards = new ArrayList<>();
 
     public static void main(String[] args) {
         Server server = new Server(9200);
@@ -23,6 +28,7 @@ public class Server implements Runnable {
 
     public Server(int port){
         this.serverPort = port;
+        this.populateDeck();
     }
 
     public void run(){
@@ -35,6 +41,7 @@ public class Server implements Runnable {
 
             try {
                 clientSocket = this.serverSocket.accept();
+                System.out.println("Connection Accepted...");
             } catch (IOException e) {
                 if(isStopped()) {
                     System.out.println("Server Stopped.") ;
@@ -76,6 +83,18 @@ public class Server implements Runnable {
     public void addPlayer(Player p){
         players.add(p);
     }
+
+    public void populateDeck(){
+        // Clear deck in case cards left over
+        allCards.clear();
+
+        /* Creating all possible cards... */
+        for (String s : this.suits) {
+            for (String r : this.ranks) {
+                allCards.add(new Card(r, s));
+            }
+        }
+    }
 }
 
 class WorkerRunnable implements Runnable{
@@ -104,7 +123,7 @@ class WorkerRunnable implements Runnable{
             ArrayList<Player> players;
             ArrayList<WorkerRunnable> runnables;
 
-            while(true){
+            while(clientSocket.isConnected()){
                 Object o = ois.readObject();
 
                 if (o instanceof Player){
@@ -140,123 +159,12 @@ class WorkerRunnable implements Runnable{
     }
 
     public void sendMessage(Player p){
-        System.out.println("MESSAGE TO Player " + player.pid + " --- FROM Player " + p.pid);
         try {
             if (oos != null){
-                oos.writeObject(new Message("TEST", 1, 2));
+                oos.writeObject(new Message(p.name +" -- (Player " + p.pid + ") joined the lobby", 1));
             }
-
         } catch (IOException e) {
-            //report exception somewhere.
             e.printStackTrace();
         }
     }
 }
-
-//public class Server implements Serializable {
-//    private static final long serialVersionUID = 2L;
-//
-//    public static void main(String[] args) {
-//        Server s = new Server();
-//        s.openSocket();
-//    }
-//
-//    // Store all the cards in the deck
-//    protected ArrayList<Card> allCards = new ArrayList<>();
-//
-//    // Store all the players in the game
-//    protected ArrayList<Player> allPlayers = new ArrayList<>();
-//
-//    // Store streams
-//    private final ArrayList<ObjectInputStream> inputStreams = new ArrayList<>();
-//    private final ArrayList<ObjectOutputStream> outputStreams = new ArrayList<>();
-//
-//    public String[] suits = {"S", "H", "D", "C"};
-//    public String[] ranks = {"A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"};
-//
-//    Server() {
-//        this.populateDeck();
-//        System.out.println("Deck Size: " + this.allCards.size());
-//    }
-//
-//    public void openSocket(){
-//        int port = 9200;
-//
-//        try (ServerSocket serverSocket = new ServerSocket(port)) {
-//
-//            System.out.println("Server is listening on port " + port);
-//
-//            while (true) {
-//                Socket socket = serverSocket.accept();
-//
-//                // get the input stream from the connected socket
-//                InputStream inputStream = socket.getInputStream();
-//                ObjectInputStream ois = new ObjectInputStream(inputStream);
-//
-//                // get the output stream from the socket.
-//                OutputStream outputStream = socket.getOutputStream();
-//                ObjectOutputStream oos = new ObjectOutputStream(outputStream);
-//
-//                this.inputStreams.add(ois);
-//                this.outputStreams.add(oos);
-//
-//                new Thread(() -> {
-//                    // code goes here.
-//                    int threadNum = inputStreams.size();
-//
-//                    try {
-//                        Object o = this.inputStreams.get(threadNum - 1).readObject();
-//
-//                        if (o instanceof Player){
-//                            // read the player data from socket
-//                            Player newPlayer = (Player) o;
-//
-//                            if (newPlayer.pid == -1 && this.allPlayers.size() < 4){
-//                                this.addNewPlayer(newPlayer);
-//                                System.out.println("How many players: " + this.allPlayers.size());
-//
-//                                for (ObjectOutputStream outs : this.outputStreams) {
-//                                    outs.writeObject(this.allPlayers.get(this.allPlayers.size() - 1));
-//                                }
-//                            } else {
-//                                // Send the updated player object
-//                                this.outputStreams.get(threadNum - 1).writeObject(new Player("null"));
-//                            }
-//                        }
-//
-//                    } catch (IOException ex){
-//                        System.out.println("I/O error: " + ex.getMessage());
-//                    } catch (ClassNotFoundException cnf){
-//                        System.out.println("Class Not Found: " + cnf.getMessage());
-//                    }
-//
-//                }).start();
-//            }
-//
-//        } catch (IOException ex) {
-//            System.out.println("Server exception: " + ex.getMessage());
-//            ex.printStackTrace();
-//        }
-//    }
-//
-//    public void addNewPlayer(Player p) throws IOException {
-//        // Set player pid
-//        p.pid = allPlayers.size() + 1;
-//
-//        // Add player to players list
-//        allPlayers.add(p);
-//        System.out.println("NEW PLAYER ADDED --  # of Players: " + allPlayers.size());
-//    }
-//
-//    public void populateDeck(){
-//        // Clear deck in case cards left over
-//        allCards.clear();
-//
-//        /* Creating all possible cards... */
-//        for (String s : this.suits) {
-//            for (String r : this.ranks) {
-//                allCards.add(new Card(r, s));
-//            }
-//        }
-//    }
-//}
