@@ -12,14 +12,8 @@ public class Server implements Runnable {
     protected boolean      isStopped    = false;
     protected Thread       runningThread= null;
 
-    protected ArrayList<Player> players = new ArrayList<>();
     protected ArrayList<WorkerRunnable> runnables = new ArrayList<>();
-
-    private final String[] suits = {"S", "H", "D", "C"};
-    private final String[] ranks = {"A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"};
-
-    // Store all the cards in the deck
-    protected ArrayList<Card> allCards = new ArrayList<>();
+    protected GameState gameState = new GameState();
 
     public static void main(String[] args) {
         Server server = new Server(9200);
@@ -28,7 +22,6 @@ public class Server implements Runnable {
 
     public Server(int port){
         this.serverPort = port;
-        this.populateDeck();
     }
 
     public void run(){
@@ -36,7 +29,7 @@ public class Server implements Runnable {
             this.runningThread = Thread.currentThread();
         }
         openServerSocket();
-        while(players.size() < 4){
+        while(gameState.getPlayers().size() < 4){
             Socket clientSocket;
 
             try {
@@ -81,19 +74,11 @@ public class Server implements Runnable {
     }
 
     public void addPlayer(Player p){
-        players.add(p);
+        gameState.addPlayer(p);
     }
 
-    public void populateDeck(){
-        // Clear deck in case cards left over
-        allCards.clear();
-
-        /* Creating all possible cards... */
-        for (String s : this.suits) {
-            for (String r : this.ranks) {
-                allCards.add(new Card(r, s));
-            }
-        }
+    public void setIsReady(int i){
+        gameState.setPlayerReady(i);
     }
 }
 
@@ -105,12 +90,16 @@ class WorkerRunnable implements Runnable{
     protected Player player = null;
     protected ObjectOutputStream oos = null;
 
+    private volatile boolean mIsStopped = false;
+
     public WorkerRunnable(Socket clientSocket, Server s) {
         this.clientSocket = clientSocket;
         this.server = s;
     }
 
     public void run() {
+        setStopped(false);
+
         try {
             InputStream input  = clientSocket.getInputStream();
             OutputStream output = clientSocket.getOutputStream();
@@ -122,31 +111,71 @@ class WorkerRunnable implements Runnable{
 
             ArrayList<Player> players;
             ArrayList<WorkerRunnable> runnables;
+            Object o;
 
-            while(clientSocket.isConnected()){
-                Object o = ois.readObject();
+            while(!mIsStopped){
+                try {
+                    o = ois.readObject();
+                    runnables = server.runnables;
+                    boolean ready = false;
 
-                if (o instanceof Player){
-                    //Update players
-                    players = server.players;
+                    if (o instanceof Player){
+                        //Update players
+                        players = server.gameState.getPlayers();
 
-                    Player newPlayer = (Player) o;
-                    newPlayer.pid = players.size() + 1;
+                        Player newPlayer = (Player) o;
 
-                    player = newPlayer;
-                    server.addPlayer(newPlayer);
+                        // Pregame lobby for new players and updated for current
+                        if (!newPlayer.getReady()){
+                            newPlayer.pid = players.size() + 1;
 
-                    oos.writeObject(newPlayer);
-                }
+                            player = newPlayer;
+                            server.addPlayer(newPlayer);
 
-                runnables = server.runnables;
+                            oos.writeObject(newPlayer);
 
-                if (player != null && runnables.size() > 0){
-                    for (WorkerRunnable r : runnables){
-                        if (r.player.pid != player.pid){
-                            r.sendMessage(player);
+                        } else {
+                            server.setIsReady(newPlayer.pid - 1);
+                            ready = true;
+                        }
+
+                        // Check if enough players to start game than start it
+                        if (players.size() > 2 && server.gameState.isReady()){
+                            for (Player p : players){
+                                System.out.println("Player " + p.pid + " -- isReady=" + p.getReady());
+                            }
+                            // Start game
+                            System.out.println("Starting game!!! YAY");
+                            server.gameState.startGame();
+                        }
+
+                        // Game is now running and playing
+                        if (server.gameState.isRunning()){
+                            // DO GAME STUFF
+                            for (WorkerRunnable r : runnables){
+                                if (r.player.pid != player.pid){
+                                    r.sendGameState();
+                                }
+                            }
                         }
                     }
+
+                    if (player != null && runnables.size() > 0 && !ready){
+                        for (WorkerRunnable r : runnables){
+                            if (r.player.pid != player.pid){
+                                r.sendMessage(player);
+                            }
+                        }
+                    }
+
+                } catch (EOFException ex){
+                    input.close();
+                    oos.close();
+
+                    System.out.println("Closing Socket for lost connection...");
+                    setStopped(true);
+
+                    clientSocket.close();
                 }
             }
 
@@ -161,10 +190,26 @@ class WorkerRunnable implements Runnable{
     public void sendMessage(Player p){
         try {
             if (oos != null){
+                int howManyNeeded = server.gameState.players.size();
                 oos.writeObject(new Message(p.name +" -- (Player " + p.pid + ") joined the lobby", 1));
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public void sendGameState(){
+        try {
+            if (oos != null){
+                oos.writeObject(server.gameState);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void setStopped(boolean isStop) {
+        if (mIsStopped != isStop)
+            mIsStopped = isStop;
     }
 }

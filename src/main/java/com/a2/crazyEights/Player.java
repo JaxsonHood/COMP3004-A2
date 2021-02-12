@@ -8,8 +8,9 @@ public class Player implements Serializable {
 
     String name;
     int pid = -1;
+    boolean isReady = false;
 
-    ArrayList<Card> cards = new ArrayList<>();
+    protected ArrayList<Card> cards = new ArrayList<>();
 
     Player(String n){
         name = n;
@@ -33,5 +34,13 @@ public class Player implements Serializable {
 
     public String getName(){
         return this.name;
+    }
+
+    public void setReady(boolean tf){
+        isReady = tf;
+    }
+
+    public boolean getReady(){
+        return isReady;
     }
 }
