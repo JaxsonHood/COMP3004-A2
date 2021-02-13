@@ -2,22 +2,26 @@ package com.a2.crazyEights;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Player implements Serializable {
     private static final long serialVersionUID = 234L;
 
-    String name;
     int pid = -1;
     boolean isReady = false;
 
     protected ArrayList<Card> cards = new ArrayList<>();
 
-    Player(String n){
-        name = n;
+    public void addCard(Card card){
+        cards.add(card);
     }
 
-    public void addCard(Card card){
-        this.cards.add(card);
+    public void removeCard(int i){
+        cards.remove(i);
+    }
+
+    public Card getCard(int i){
+        return cards.get(i);
     }
 
     public void printCards(){
@@ -30,10 +34,6 @@ public class Player implements Serializable {
             }
             System.out.print("\n");
         }
-    }
-
-    public String getName(){
-        return this.name;
     }
 
     public void setReady(boolean tf){

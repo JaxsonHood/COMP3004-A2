@@ -4,6 +4,7 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Server implements Runnable {
 
@@ -17,6 +18,7 @@ public class Server implements Runnable {
 
     public static void main(String[] args) {
         Server server = new Server(9200);
+        System.out.println("SERVER RUNNING (port=9200)");
         new Thread(server).start();
     }
 
@@ -115,6 +117,7 @@ class WorkerRunnable implements Runnable{
 
             while(!mIsStopped){
                 try {
+                    // reset so object updates (weird java thing)
                     o = ois.readObject();
                     runnables = server.runnables;
                     boolean ready = false;
@@ -145,27 +148,37 @@ class WorkerRunnable implements Runnable{
                                 System.out.println("Player " + p.pid + " -- isReady=" + p.getReady());
                             }
                             // Start game
-                            System.out.println("Starting game!!! YAY");
+                            System.out.println("\nSTARTING GAME");
                             server.gameState.startGame();
                         }
 
                         // Game is now running and playing
                         if (server.gameState.isRunning()){
-                            // DO GAME STUFF
+
+                            if (server.gameState.whoseTurn == -1){
+                                server.gameState.setNextTurn();
+                            }
+
                             for (WorkerRunnable r : runnables){
-                                if (r.player.pid != player.pid){
-                                    r.sendGameState();
-                                }
+                                r.sendGameState();
                             }
                         }
                     }
 
-                    if (player != null && runnables.size() > 0 && !ready){
+                    // Pre game lobby messages
+                    if (player != null && runnables.size() > 0 && !ready && !(o instanceof GameState)){
                         for (WorkerRunnable r : runnables){
                             if (r.player.pid != player.pid){
                                 r.sendMessage(player);
                             }
                         }
+                    }
+
+                    // Pass game to appropriate player and update local game
+                    if (o instanceof GameState){
+                        GameState gs = (GameState) o;
+                        System.out.println("Whose next " + gs.whoseTurn);
+                        gs.getPlayer(gs.getPrevTurn()).printCards();
                     }
 
                 } catch (EOFException ex){
@@ -191,7 +204,7 @@ class WorkerRunnable implements Runnable{
         try {
             if (oos != null){
                 int howManyNeeded = server.gameState.players.size();
-                oos.writeObject(new Message(p.name +" -- (Player " + p.pid + ") joined the lobby", 1));
+                oos.writeObject(new Message( "(Player " + p.pid + ") joined the lobby", 1));
             }
         } catch (IOException e) {
             e.printStackTrace();

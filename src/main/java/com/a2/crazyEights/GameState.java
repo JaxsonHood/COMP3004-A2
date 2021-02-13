@@ -7,9 +7,12 @@ import java.util.Collections;
 public class GameState implements Serializable {
     private static final long serialVersionUID = 234L;
 
-    protected ArrayList<Player> players;
+    protected ArrayList<Player> players = new ArrayList<>();
     protected Card topCard;
     protected boolean gameStarted = false;
+
+    protected int whoseTurn = -1;
+    protected int prevTurn = 0;
 
     private final String[] suits = {"S", "H", "D", "C"};
     private final String[] ranks = {"A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"};
@@ -18,7 +21,6 @@ public class GameState implements Serializable {
     public ArrayList<Card> allCards = new ArrayList<>();
 
     GameState(){
-        players = new ArrayList<>();
         this.populateDeck();
     }
 
@@ -36,8 +38,11 @@ public class GameState implements Serializable {
 
     public void addPlayer(Player p){
         players.add(p);
-        System.out.println(players.size());
         this.assignCards(p.pid - 1);
+    }
+
+    public Player getPlayer(int pid){
+        return players.get(pid - 1);
     }
 
     public void setTopCard(Card topCard){
@@ -45,15 +50,42 @@ public class GameState implements Serializable {
     }
 
     public void startGame(){
+        this.setTopCard(allCards.get(0));
+        allCards.remove(0);
         gameStarted = true;
     }
 
-    public boolean isRunning(){
-        return gameStarted;
+    public boolean isRunning(){ return gameStarted; }
+
+    public void setNextTurn(){
+        prevTurn = whoseTurn;
+        whoseTurn = getNextTurn(); }
+
+    public int getNextTurn(){
+        if (whoseTurn <= players.size() && whoseTurn != -1){
+            return whoseTurn + 1;
+        }
+        return 1;
+    }
+
+    public int getPrevTurn(){
+        return prevTurn;
     }
 
     public void addCardToPlayer(Card c, int pos){
         players.get(pos).addCard(c);
+    }
+
+    public boolean canPlayCard(int pid){
+        Player p = players.get(pid - 1);
+
+        for (Card c : p.cards){
+            if (c.isSuitOrRank(topCard)){
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public ArrayList<Player> getPlayers(){
@@ -92,5 +124,17 @@ public class GameState implements Serializable {
         }
 
         allCards = newCardsAvailable;
+    }
+
+    public void playerDrawCard(int pid){
+        Player p = players.get(pid - 1);
+        p.addCard(allCards.get(0));
+        players.set(pid - 1, p);
+
+        allCards.remove(0);
+    }
+
+    public void playerRemoveCard(int pid, int i){
+        players.get(pid - 1).removeCard(i);
     }
 }
