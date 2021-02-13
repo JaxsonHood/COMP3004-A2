@@ -55,8 +55,17 @@ public class GameState implements Serializable {
     }
 
     public void startGame(){
-        this.setTopCard(allCards.get(0));
-        allCards.remove(0);
+        int index = 0;
+
+        for (Card c : allCards){
+            if (!c.rank.equals("8")){
+                this.setTopCard(allCards.get(index));
+                break;
+            }
+            index++;
+        }
+
+        allCards.remove(index);
         gameStarted = true;
     }
 
@@ -168,5 +177,91 @@ public class GameState implements Serializable {
 
     public void playerRemoveCard(int pid, int i){
         players.get(pid - 1).removeCard(i);
+    }
+
+    public boolean isRoundRunning(){
+        boolean isRunning = true;
+
+        for (Player p : players){
+            if (p.cards.size() < 1){
+                isRunning = false;
+            }
+        }
+
+        if (allCards.size() < 1) isRunning = false;
+
+        return isRunning;
+    }
+
+    public void tallyScores(){
+        for (Player p : players) {
+            p.clearScore();
+
+            for (Card c : p.cards) {
+                switch (c.rank) {
+                    case "8":
+                        p.addToScore(50);
+                        break;
+                    case "K":
+                    case "J":
+                    case "Q":
+                        p.addToScore(10);
+                        break;
+                    case "A":
+                        p.addToScore(1);
+                        break;
+                    default:
+                        p.addToScore(Integer.parseInt(c.rank));
+                        break;
+                }
+            }
+        }
+    }
+
+    public boolean getCanAnyonePlay(){
+        int howManyCan = 0;
+
+        for (Player p : players){
+            if (canPlayCard(p.pid)){
+                howManyCan++;
+            }
+        }
+
+        return howManyCan >= 1;
+    }
+
+    public String getScoreBoard(){
+        StringBuilder rs = new StringBuilder();
+        String direction = "Left";
+
+        String topCardString = "";
+
+        topCardString += topCard.rank;
+        topCardString += topCard.suit;
+
+        if (!directionForward){
+            direction = "Right";
+        }
+
+        rs.append("\n    --Game Update--  \n");
+        rs.append("_______________________\n");
+        rs.append("| ROUND: " + roundNumber + "           |\n");
+        rs.append("| Cards in pile: " + allCards.size() + "\n");
+        rs.append("| Whose Turn: Player " + whoseTurn + " \n");
+        rs.append("| Top Card:    " + topCardString + "\n");
+        rs.append("| Direction:   " + direction + "\n");
+        rs.append("_______________________\n");
+        rs.append("| SCORES:             |\n");
+
+        tallyScores();
+
+        for (Player p : players){
+            rs.append("| Player ").append(p.pid).append(" ~ ").append(p.score).append("\n");
+        }
+
+        rs.append("|                     |\n");
+        rs.append("-----------------------\n");
+
+        return rs.toString();
     }
 }

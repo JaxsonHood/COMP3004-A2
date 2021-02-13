@@ -183,10 +183,23 @@ class WorkerRunnable implements Runnable{
                         GameState gs = (GameState) o;
                         server.setGameState(gs);
 
-                        // Send game to next player
-                        for (WorkerRunnable r : runnables){
-                            if (r.player.pid == gs.whoseTurn){
-                                r.sendGameState();
+                        if (gs.isRoundRunning() && gs.getCanAnyonePlay()){
+                            // Send game to next player
+                            for (WorkerRunnable r : runnables){
+
+                                // Send updated board to all players
+                                r.sendScoreSheet(gs.getScoreBoard());
+
+                                if (r.player.pid == gs.whoseTurn){
+                                    r.sendGameState();
+                                }
+                            }
+                        } else {
+                            System.out.println("GOTTA START NEW ROUND");
+                            gs.tallyScores();
+
+                            for (Player p : gs.getPlayers()){
+                                System.out.println("Player " + p.pid + " -- SCORE: " + p.score);
                             }
                         }
 
@@ -215,7 +228,6 @@ class WorkerRunnable implements Runnable{
     public void sendMessage(Player p){
         try {
             if (oos != null){
-                int howManyNeeded = server.gameState.players.size();
                 oos.writeObject(new Message( "(Player " + p.pid + ") joined the lobby", 1));
             }
         } catch (IOException e) {
@@ -227,6 +239,16 @@ class WorkerRunnable implements Runnable{
         try {
             if (oos != null){
                 oos.writeObject(server.gameState);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void sendScoreSheet(String s){
+        try {
+            if (oos != null){
+                oos.writeObject(s);
             }
         } catch (IOException e) {
             e.printStackTrace();

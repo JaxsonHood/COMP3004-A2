@@ -43,4 +43,12 @@ public class Player implements Serializable {
     public boolean getReady(){
         return isReady;
     }
+
+    public void addToScore(int scor){
+        score += scor;
+    }
+
+    public void clearScore(){
+        score = 0;
+    }
 }

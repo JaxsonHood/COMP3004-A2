@@ -87,14 +87,14 @@ public class Game implements Serializable {
                         GameState gs = (GameState) o;
 
                         if (!gameStarted){
-                            System.out.println("\n___ GAME HAS STARTED ___");
+                            System.out.println("\n_____ GAME HAS STARTED _____\n");
                             gameStarted = true;
                         }
 
                         if (gs.whoseTurn != playerPid){
-                            System.out.println("\n//// Player " + gs.whoseTurn + " is up ////");
+                            System.out.println(" ");
                         } else {
-                            System.out.println("\n////////// You are up //////////\n");
+                            System.out.println(" --- Turn Started --- ");
 
                             // To check if previous player played an 8
                             if (!gs.getSuitToMatch().equals("")){
@@ -150,6 +150,12 @@ public class Game implements Serializable {
                                                     System.out.print("\nYou played an 8 select suit you want to change to {S, H, D, C} : ");
                                                     String newSuit = scanner.nextLine();
                                                     gs.setSuitToMatch(newSuit);
+                                                    c.suit = newSuit;
+                                                }
+
+                                                if (c.rank.equals("A")){
+                                                    gs.changeDirection();
+                                                    System.out.println("You played an Ace: Direction Changed!!");
                                                 }
 
                                                 System.out.println("\n --- Turn Ended, Player " + gs.getNextTurn() + " is up! --- ");
@@ -183,6 +189,13 @@ public class Game implements Serializable {
                             }
                         }
                     }
+
+                    // Show player updated score sheet
+                    if (o instanceof String){
+                        String scoreSheet = (String) o;
+                        System.out.println(scoreSheet);
+                    }
+
                 } catch (ClassNotFoundException ex){
                     System.out.println(ex.getMessage());
                 }
