@@ -82,6 +82,10 @@ public class Server implements Runnable {
     public void setIsReady(int i){
         gameState.setPlayerReady(i);
     }
+
+    public void setGameState(GameState g){
+        gameState = g;
+    }
 }
 
 class WorkerRunnable implements Runnable{
@@ -177,8 +181,16 @@ class WorkerRunnable implements Runnable{
                     // Pass game to appropriate player and update local game
                     if (o instanceof GameState){
                         GameState gs = (GameState) o;
+                        server.setGameState(gs);
+
+                        // Send game to next player
+                        for (WorkerRunnable r : runnables){
+                            if (r.player.pid == gs.whoseTurn){
+                                r.sendGameState();
+                            }
+                        }
+
                         System.out.println("Whose next " + gs.whoseTurn);
-                        gs.getPlayer(gs.getPrevTurn()).printCards();
                     }
 
                 } catch (EOFException ex){

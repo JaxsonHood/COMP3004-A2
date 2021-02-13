@@ -82,6 +82,7 @@ public class Game implements Serializable {
                         }
                     }
 
+                    // GO in here for game
                     if (o instanceof GameState){
                         GameState gs = (GameState) o;
 
@@ -95,8 +96,14 @@ public class Game implements Serializable {
                         } else {
                             System.out.println("\n////////// You are up //////////\n");
 
-                            System.out.println("TOP CARD:");
-                            gs.topCard.print();
+                            // To check if previous player played an 8
+                            if (!gs.getSuitToMatch().equals("")){
+                                System.out.println("Previous player changed suit to : " + gs.getSuitToMatch());
+                                System.out.println("Either play another 8 or match suit...");
+                            } else {
+                                System.out.println("TOP CARD:");
+                                gs.topCard.print();
+                            }
 
                             if (!gs.canPlayCard(playerPid)){
                                 System.out.println("You do not have a card to play, drawing card...");
@@ -105,7 +112,7 @@ public class Game implements Serializable {
                             int cardsDrawn = 0;
 
                             // Draw a card until player can play a card
-                            while (!gs.canPlayCard(playerPid) && cardsDrawn < 2){
+                            while (!gs.canPlayCard(playerPid) && cardsDrawn < 3){
                                 gs.playerDrawCard(playerPid);
                                 cardsDrawn++;
                                 System.out.println( cardsDrawn + " card(s) drawn");
@@ -118,41 +125,62 @@ public class Game implements Serializable {
                             boolean isCardSelected = false;
 
                             // Get player to select a card
-                            while (!isCardSelected) {
-                                System.out.print("\nSelect card (1 - " + player.cards.size() + ") : ");
+                            if (gs.canPlayCard(playerPid)){
+                                while (!isCardSelected) {
+                                    System.out.print("\nSelect card (1 - " + player.cards.size() + ") : ");
 
-                                String whichCardString = scanner.nextLine();
+                                    String whichCardString = scanner.nextLine();
 
-                                try {
-                                    int whichCard = Integer.parseInt(whichCardString);
+                                    try {
+                                        int whichCard = Integer.parseInt(whichCardString);
 
-                                    if (whichCard > 0 && whichCard <= player.cards.size()){
+                                        if (whichCard > 0 && whichCard <= player.cards.size()){
 
-                                        System.out.println("\nYou selected: ");
+                                            Card c = player.getCard(whichCard - 1);
 
-                                        Card c = player.getCard(whichCard - 1);
-                                        c.print();
+                                            if (c.isSuitOrRank(gs.topCard) || c.suit.equals(gs.getSuitToMatch())){
 
-                                        System.out.println("\n --- Turn Ended, Player " + gs.getNextTurn() + " is up! --- ");
-                                        isCardSelected = true;
+                                                System.out.println("\nYou selected: ");
+                                                c.print();
 
-                                        gs.setTopCard(c);
-                                        gs.playerRemoveCard(playerPid, whichCard - 1);
-                                        gs.getPlayer(playerPid).printCards();
-                                        gs.setNextTurn();
+                                                // Reset suitToMatch for next player
+                                                gs.setSuitToMatch("");
 
-                                        // So the ArrayLists get updated
-                                        oos.reset();
+                                                if (c.rank.equals("8")){
+                                                    System.out.print("\nYou played an 8 select suit you want to change to {S, H, D, C} : ");
+                                                    String newSuit = scanner.nextLine();
+                                                    gs.setSuitToMatch(newSuit);
+                                                }
 
-                                        oos.writeObject(gs);
+                                                System.out.println("\n --- Turn Ended, Player " + gs.getNextTurn() + " is up! --- ");
+                                                isCardSelected = true;
 
-                                    } else System.out.println("Selected card out of number range...");
+                                                gs.setTopCard(c);
+                                                gs.playerRemoveCard(playerPid, whichCard - 1);
+                                                gs.setNextTurn();
 
-                                } catch (Exception e){
-                                    System.out.println("Invalid Input...");
+                                                // So the ArrayLists get updated
+                                                oos.reset();
+                                                oos.writeObject(gs);
+
+                                            } else System.out.println("Card is not playable, please select a different card...");
+
+                                        } else System.out.println("Selected card out of number range...");
+
+                                    } catch (Exception e){
+                                        System.out.println("Invalid Input...");
+                                    }
                                 }
-                            }
+                            } else {
+                                System.out.println("\n - Cannot play any cards -");
+                                System.out.println("\n --- Turn Ended, Player " + gs.getNextTurn() + " is up! --- ");
 
+                                gs.setNextTurn();
+
+                                // So the ArrayLists get updated
+                                oos.reset();
+                                oos.writeObject(gs);
+                            }
                         }
                     }
                 } catch (ClassNotFoundException ex){

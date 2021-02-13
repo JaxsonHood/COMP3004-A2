@@ -2,7 +2,6 @@ package com.a2.crazyEights;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Player implements Serializable {
     private static final long serialVersionUID = 234L;
@@ -11,6 +10,7 @@ public class Player implements Serializable {
     boolean isReady = false;
 
     protected ArrayList<Card> cards = new ArrayList<>();
+    protected int score = 0;
 
     public void addCard(Card card){
         cards.add(card);

@@ -50,10 +50,11 @@ public class Card implements Serializable {
     }
 
     public boolean isSuitOrRank(Card c){
-        if (c.rank.equals(rank) || c.suit.equals(suit)){
-            return true;
-        }
-        return false;
+        return c.rank.equals(rank) || c.suit.equals(suit);
+    }
+
+    public boolean isRank(String s){
+        return s.equals(rank);
     }
 
     public String[] getCardStringRows(){

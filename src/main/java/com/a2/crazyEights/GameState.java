@@ -14,6 +14,11 @@ public class GameState implements Serializable {
     protected int whoseTurn = -1;
     protected int prevTurn = 0;
 
+    protected boolean directionForward = true;
+    protected int roundNumber = 1;
+
+    protected String suitToMatch = "";
+
     private final String[] suits = {"S", "H", "D", "C"};
     private final String[] ranks = {"A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"};
 
@@ -57,19 +62,38 @@ public class GameState implements Serializable {
 
     public boolean isRunning(){ return gameStarted; }
 
+    public String getSuitToMatch(){
+        return suitToMatch;
+    }
+
+    public void setSuitToMatch(String s){
+        suitToMatch = s;
+    }
+
     public void setNextTurn(){
         prevTurn = whoseTurn;
         whoseTurn = getNextTurn(); }
 
     public int getNextTurn(){
-        if (whoseTurn <= players.size() && whoseTurn != -1){
-            return whoseTurn + 1;
+        if (directionForward){
+            if (whoseTurn < players.size() && whoseTurn != -1){
+                return whoseTurn + 1;
+            }
+            return 1;
+        } else {
+            if (whoseTurn > 1){
+                return whoseTurn - 1;
+            }
+            return players.size();
         }
-        return 1;
     }
 
     public int getPrevTurn(){
         return prevTurn;
+    }
+
+    public void changeDirection(){
+        directionForward = !directionForward;
     }
 
     public void addCardToPlayer(Card c, int pos){
@@ -79,9 +103,17 @@ public class GameState implements Serializable {
     public boolean canPlayCard(int pid){
         Player p = players.get(pid - 1);
 
-        for (Card c : p.cards){
-            if (c.isSuitOrRank(topCard)){
-                return true;
+        if (!getSuitToMatch().equals("")){
+            for (Card c : p.cards){
+                if (c.suit.equals(getSuitToMatch())){
+                    return true;
+                }
+            }
+        } else {
+            for (Card c : p.cards){
+                if (c.isSuitOrRank(topCard)){
+                    return true;
+                }
             }
         }
 
