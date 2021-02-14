@@ -3,6 +3,7 @@ package com.a2.crazyEights;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 public class GameState implements Serializable {
     private static final long serialVersionUID = 234L;
@@ -13,6 +14,9 @@ public class GameState implements Serializable {
 
     protected int whoseTurn = -1;
     protected int prevTurn = 0;
+
+    protected boolean skipTurn = false;
+    protected int howManyPlayed = 0;
 
     protected boolean directionForward = true;
     protected int roundNumber = 1;
@@ -54,6 +58,39 @@ public class GameState implements Serializable {
         this.topCard = topCard;
     }
 
+    public boolean canPlayerPlayEnough(int pid){
+        Player p = players.get(pid - 1);
+
+        // For every card check all combinations
+        for (Card c : p.cards){
+            if (c.isSuitOrRank(topCard)){
+                int innerCount = 1;
+
+                for (Card cc : p.cards){
+                    if (!cc.equals(c)){
+                        if (c.isSuitOrRank(cc)){
+                            innerCount++;
+                        }
+                    }
+                }
+
+                if (innerCount >= howManyPlayed){
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public void setHowManyPlayed(int howMany){
+        howManyPlayed += howMany;
+    }
+
+    public void clearHowManyPlayed(){
+        howManyPlayed = 0;
+    }
+
     public void startGame(){
         int index = 0;
 
@@ -83,6 +120,11 @@ public class GameState implements Serializable {
         prevTurn = whoseTurn;
         whoseTurn = getNextTurn(); }
 
+
+    public void setSkipTurn(boolean tf){
+        skipTurn = tf;
+    }
+
     public int getNextTurn(){
         if (directionForward){
             if (whoseTurn < players.size() && whoseTurn != -1){
@@ -95,10 +137,6 @@ public class GameState implements Serializable {
             }
             return players.size();
         }
-    }
-
-    public int getPrevTurn(){
-        return prevTurn;
     }
 
     public void changeDirection(){
@@ -175,8 +213,26 @@ public class GameState implements Serializable {
         allCards.remove(0);
     }
 
+    public void playerDrawCards(int pid){
+        for (int i = 0; i < howManyPlayed; i++){
+            playerDrawCard(pid);
+        }
+    }
+
     public void playerRemoveCard(int pid, int i){
         players.get(pid - 1).removeCard(i);
+    }
+
+    public void playerRemoveCard(int pid, Card c){
+        int count = 0;
+
+        for (Card ca : players.get(pid - 1).cards){
+            if (ca.equals(c)){
+                playerRemoveCard(pid, count);
+                System.out.println("CARD REMOVED!!");
+            }
+            count++;
+        }
     }
 
     public boolean isRoundRunning(){

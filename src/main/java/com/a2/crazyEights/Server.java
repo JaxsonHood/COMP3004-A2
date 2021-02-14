@@ -4,7 +4,6 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Server implements Runnable {
 
@@ -50,7 +49,7 @@ public class Server implements Runnable {
             runnables.add(wr);
             new Thread(runnables.get(runnables.size() - 1)).start();
         }
-        System.out.println("Server Stopped.") ;
+        System.out.println("Server Stopped.");
     }
 
 

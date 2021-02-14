@@ -3,6 +3,7 @@ package com.a2.crazyEights;
 import java.io.*;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.Scanner;
 
 public class Game implements Serializable {
@@ -109,10 +110,23 @@ public class Game implements Serializable {
                                 System.out.println("You do not have a card to play, drawing card...");
                             }
 
+                            // Used for handling twos
+                            boolean canPlayCardsLocal = false;
+                            ArrayList<Card> cardsToBePlayed = new ArrayList<>();
+
+                            // Handles the twos
+                            if (gs.howManyPlayed > 0 && gs.canPlayerPlayEnough(playerPid)){
+                                System.out.println("\nPrevious player played a two, pick " + gs.howManyPlayed + " cards to play.");
+                                canPlayCardsLocal = true;
+                            } else if (gs.howManyPlayed > 0){
+                                System.out.println("\nPrevious player played a two, you cannot play " + gs.howManyPlayed + " cards, draw " + gs.howManyPlayed + " cards.");
+                                gs.playerDrawCards(playerPid);
+                            }
+
                             int cardsDrawn = 0;
 
                             // Draw a card until player can play a card
-                            while (!gs.canPlayCard(playerPid) && cardsDrawn < 3){
+                            while (!gs.canPlayCard(playerPid) && cardsDrawn < 3 && gs.howManyPlayed == 0){
                                 gs.playerDrawCard(playerPid);
                                 cardsDrawn++;
                                 System.out.println( cardsDrawn + " card(s) drawn");
@@ -125,8 +139,8 @@ public class Game implements Serializable {
                             boolean isCardSelected = false;
 
                             // Get player to select a card
-                            if (gs.canPlayCard(playerPid)){
-                                while (!isCardSelected) {
+                            if (gs.canPlayCard(playerPid) && !gs.skipTurn){
+                                while (!isCardSelected || (canPlayCardsLocal && cardsToBePlayed.size() < gs.howManyPlayed)) {
                                     System.out.print("\nSelect card (1 - " + player.cards.size() + ") : ");
 
                                     String whichCardString = scanner.nextLine();
@@ -138,7 +152,8 @@ public class Game implements Serializable {
 
                                             Card c = player.getCard(whichCard - 1);
 
-                                            if (c.isSuitOrRank(gs.topCard) || c.suit.equals(gs.getSuitToMatch())){
+                                            if (c.isSuitOrRank(gs.topCard) || c.suit.equals(gs.getSuitToMatch()) || (cardsToBePlayed.size() > 0 &&
+                                                    c.isSuitOrRank(cardsToBePlayed.get(cardsToBePlayed.size() - 1)))){
 
                                                 System.out.println("\nYou selected: ");
                                                 c.print();
@@ -158,16 +173,57 @@ public class Game implements Serializable {
                                                     System.out.println("You played an Ace: Direction Changed!!");
                                                 }
 
-                                                System.out.println("\n --- Turn Ended, Player " + gs.getNextTurn() + " is up! --- ");
-                                                isCardSelected = true;
+                                                if (c.rank.equals("Q")){
+                                                    gs.setSkipTurn(true);
+                                                    System.out.println("You played a Queen skipping next player");
+                                                }
 
-                                                gs.setTopCard(c);
-                                                gs.playerRemoveCard(playerPid, whichCard - 1);
-                                                gs.setNextTurn();
+                                                if (c.rank.equals("2")){
+                                                    gs.setHowManyPlayed(2);
+                                                }
 
-                                                // So the ArrayLists get updated
-                                                oos.reset();
-                                                oos.writeObject(gs);
+                                                if (!canPlayCardsLocal){
+                                                    System.out.println("\n --- Turn Ended, Player " + gs.getNextTurn() + " is up! --- ");
+                                                    isCardSelected = true;
+
+                                                    if (gs.topCard.rank.equals("2") && !c.rank.equals("2")){
+                                                        gs.clearHowManyPlayed();
+                                                    }
+
+                                                    gs.setTopCard(c);
+                                                    gs.playerRemoveCard(playerPid, whichCard - 1);
+                                                    gs.setNextTurn();
+
+                                                    // So the ArrayLists get updated
+                                                    oos.reset();
+                                                    oos.writeObject(gs);
+                                                } else {
+                                                    cardsToBePlayed.add(c);
+                                                    if (cardsToBePlayed.size() == gs.howManyPlayed){
+                                                        canPlayCardsLocal = false;
+                                                    }
+                                                }
+
+                                                if (cardsToBePlayed.size() != 0 && cardsToBePlayed.size() >= gs.howManyPlayed){
+
+                                                    System.out.println("Send cards to server");
+                                                    System.out.println("# of cards played: " + cardsToBePlayed.size());
+                                                    isCardSelected = true;
+
+                                                    // TODO -- Check if there is a two in the cards chosen
+
+                                                    if (gs.topCard.rank.equals("2") && !c.rank.equals("2")){
+                                                        gs.clearHowManyPlayed();
+                                                    }
+
+                                                    gs.playerRemoveCard(playerPid, whichCard - 1);
+                                                    gs.setTopCard(cardsToBePlayed.get(whichCard - 1));
+                                                    gs.setNextTurn();
+
+                                                    // So the ArrayLists get updated
+                                                    oos.reset();
+                                                    oos.writeObject(gs);
+                                                }
 
                                             } else System.out.println("Card is not playable, please select a different card...");
 
@@ -178,7 +234,12 @@ public class Game implements Serializable {
                                     }
                                 }
                             } else {
-                                System.out.println("\n - Cannot play any cards -");
+                                if (gs.skipTurn){
+                                    gs.setSkipTurn(false);
+                                    System.out.println("\n - Previous player played a Queen, skip your turn -");
+                                } else {
+                                    System.out.println("\n - Cannot play any cards -");
+                                }
                                 System.out.println("\n --- Turn Ended, Player " + gs.getNextTurn() + " is up! --- ");
 
                                 gs.setNextTurn();
