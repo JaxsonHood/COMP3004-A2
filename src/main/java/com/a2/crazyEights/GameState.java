@@ -1,9 +1,8 @@
 package com.a2.crazyEights;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.lang.reflect.Array;
+import java.util.*;
 
 public class GameState implements Serializable {
     private static final long serialVersionUID = 234L;
@@ -21,16 +20,25 @@ public class GameState implements Serializable {
     protected boolean directionForward = true;
     protected int roundNumber = 1;
 
+    protected int howManyPlayers = 0;
+
     protected String suitToMatch = "";
 
     private final String[] suits = {"S", "H", "D", "C"};
     private final String[] ranks = {"A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"};
 
+    protected boolean isRiggedGame;
+    protected boolean hasRiggedGameStarted =  false;
+
     // Store all the cards in the deck
     public ArrayList<Card> allCards = new ArrayList<>();
 
-    GameState(){
-        this.populateDeck();
+    GameState(boolean isRigg){
+        this.isRiggedGame = isRigg;
+
+        if (!isRigg){
+            this.populateDeck();
+        }
     }
 
     public boolean isReady(){
@@ -46,8 +54,10 @@ public class GameState implements Serializable {
     }
 
     public void addPlayer(Player p){
-        players.add(p);
-        this.assignCards(p.pid - 1);
+        if (!isRiggedGame){
+            players.add(p);
+            this.assignCards(p.pid - 1);
+        }
     }
 
     public Player getPlayer(int pid){
@@ -63,6 +73,7 @@ public class GameState implements Serializable {
 
         // For every card check all combinations
         for (Card c : p.cards){
+
             if (c.isSuitOrRank(topCard)){
                 int innerCount = 1;
 
@@ -92,17 +103,19 @@ public class GameState implements Serializable {
     }
 
     public void startGame(){
-        int index = 0;
+        if (!isRiggedGame){
+            int index = 0;
 
-        for (Card c : allCards){
-            if (!c.rank.equals("8")){
-                this.setTopCard(allCards.get(index));
-                break;
+            for (Card c : allCards){
+                if (!c.rank.equals("8")){
+                    this.setTopCard(allCards.get(index));
+                    break;
+                }
+                index++;
             }
-            index++;
-        }
 
-        allCards.remove(index);
+            allCards.remove(index);
+        }
         gameStarted = true;
     }
 
@@ -193,6 +206,7 @@ public class GameState implements Serializable {
     public void assignCards(int i){
         int count = 0;
 
+        players.get(i).clearCards();
         ArrayList<Card> newCardsAvailable = new ArrayList<>();
 
         for (Card c : allCards){
@@ -223,28 +237,38 @@ public class GameState implements Serializable {
         players.get(pid - 1).removeCard(i);
     }
 
-    public void playerRemoveCard(int pid, Card c){
-        int count = 0;
+    public void removeChoices(int pid, ArrayList<Card> ignore){
+        ArrayList<Card> newList = new ArrayList<>();
 
-        for (Card ca : players.get(pid - 1).cards){
-            if (ca.equals(c)){
-                playerRemoveCard(pid, count);
-                System.out.println("CARD REMOVED!!");
+        for (Card c : players.get(pid - 1).cards){
+            boolean addOrNot = true;
+
+            for (Card n : ignore){
+                if (n.equals(c)){
+                    addOrNot = false;
+                }
             }
-            count++;
+
+            if (addOrNot){
+                newList.add(c);
+            }
         }
+
+        players.get(pid - 1).setCardList(newList);
     }
 
     public boolean isRoundRunning(){
         boolean isRunning = true;
 
-        for (Player p : players){
-            if (p.cards.size() < 1){
-                isRunning = false;
+        if (!isRiggedGame){
+            for (Player p : players){
+                if (p.cards.size() < 1){
+                    isRunning = false;
+                }
             }
-        }
 
-        if (allCards.size() < 1) isRunning = false;
+            if (allCards.size() < 1) isRunning = false;
+        }
 
         return isRunning;
     }
@@ -283,7 +307,46 @@ public class GameState implements Serializable {
             }
         }
 
-        return howManyCan >= 1;
+        if (allCards.size() > 0){
+            return true;
+        }
+
+        return howManyCan > 0;
+    }
+
+    public boolean isAtOneHundredPoints(){
+        for (Player p : players){
+            if (p.totalScore > 99){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public void startNextRound(){
+
+        // Add scores to total scores
+        for (int i = 0; i < players.size(); i++){
+            players.get(i).addToTotalScore();
+            players.get(i).clearScore();
+        }
+
+        // Reset cards & variables
+        whoseTurn = roundNumber + 1;
+        prevTurn = 0;
+        skipTurn = false;
+        howManyPlayed = 0;
+        directionForward = true;
+        roundNumber = roundNumber + 1;
+        suitToMatch = "";
+
+        populateDeck();
+
+        for (int i = 0; i < players.size(); i++){
+            assignCards(i);
+        }
+
+        startGame();
     }
 
     public String getScoreBoard(){
@@ -299,7 +362,7 @@ public class GameState implements Serializable {
             direction = "Right";
         }
 
-        rs.append("\n    --Game Update--  \n");
+        rs.append("\n    --Score Board--  \n");
         rs.append("_______________________\n");
         rs.append("| ROUND: " + roundNumber + "           |\n");
         rs.append("| Cards in pile: " + allCards.size() + "\n");
@@ -319,5 +382,93 @@ public class GameState implements Serializable {
         rs.append("-----------------------\n");
 
         return rs.toString();
+    }
+
+    public String getFinalScoreBoard(){
+        StringBuilder rs = new StringBuilder();
+        String direction = "Left";
+
+        String topCardString = "";
+
+        topCardString += topCard.rank;
+        topCardString += topCard.suit;
+
+        if (!directionForward){
+            direction = "Right";
+        }
+
+        rs.append("\n    --Final Scores--  \n");
+        rs.append("_______________________\n");
+        rs.append("| ROUND: " + roundNumber + "           |\n");
+        rs.append("| Cards in pile: " + allCards.size() + "\n");
+        rs.append("| Whose Turn: Player " + whoseTurn + " \n");
+        rs.append("| Top Card:    " + topCardString + "\n");
+        rs.append("| Direction:   " + direction + "\n");
+        rs.append("_______________________\n");
+        rs.append("| SCORES:             |\n");
+
+        tallyScores();
+
+        for (Player p : players){
+            rs.append("| Player ").append(p.pid).append(" ~ ").append(p.totalScore).append("\n");
+        }
+
+        rs.append("|                     |\n");
+        rs.append("-----------------------\n");
+
+        return rs.toString();
+    }
+
+    public void populateRiggedGame(){
+        HashMap<String, ArrayList<Card>> rg1 = new HashMap<String, ArrayList<Card>>();
+        rg1.put("deck", new ArrayList<Card>(Arrays.asList(new Card("2", "C"))));
+        rg1.put("1", new ArrayList<Card>(Arrays.asList(new Card("3", "C"))));
+        rg1.put("2", new ArrayList<Card>(Arrays.asList(new Card("2", "H"))));
+
+    }
+
+    public void setRiggedGame(){
+
+        System.out.print("\nGame is rigged, enter how many players : ");
+        Scanner s = new Scanner(System.in);
+        String ss = s.nextLine();
+
+        for (int i = 0; i < Integer.parseInt(ss); i++){
+            ArrayList<Card> ncl = new ArrayList<Card>();
+
+            System.out.println("Enter cards for player " + (i+1) + " ex. 2D,3S,7S : ");
+            String cards = s.nextLine();
+
+            String[] clist = cards.replaceAll("\\s", "").split(",");
+
+            for (String ns : clist){
+                ncl.add(new Card(Character.toString(ns.charAt(0)), Character.toString(ns.charAt(1))));
+            }
+
+            Player p = new Player();
+            p.pid = i + 1;
+            p.setCardList(ncl);
+            players.add(p);
+        }
+
+        System.out.print("\nWhich player starts? : ");
+        ss = s.nextLine();
+        whoseTurn = Integer.parseInt(ss);
+        System.out.println(whoseTurn);
+
+        System.out.print("\nEnter top card for game ex. 2D : ");
+        ss = s.nextLine();
+        topCard = new Card(Character.toString(ss.charAt(0)), Character.toString(ss.charAt(1)));
+
+
+        //WORK PLEASE
+        System.out.println("Enter cards for deck ex. 2D,3S,7S : ");
+        ss = s.nextLine();
+
+        String[] clist = ss.replaceAll("\\s", "").split(",");
+
+        for (String ns : clist){
+            allCards.add(new Card(Character.toString(ns.charAt(0)), Character.toString(ns.charAt(1))));
+        }
     }
 }

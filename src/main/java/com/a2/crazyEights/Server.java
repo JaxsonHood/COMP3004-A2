@@ -4,6 +4,7 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Scanner;
 
 public class Server implements Runnable {
 
@@ -13,7 +14,7 @@ public class Server implements Runnable {
     protected Thread       runningThread= null;
 
     protected ArrayList<WorkerRunnable> runnables = new ArrayList<>();
-    protected GameState gameState = new GameState();
+    protected GameState gameState;
 
     public static void main(String[] args) {
         Server server = new Server(9200);
@@ -30,6 +31,22 @@ public class Server implements Runnable {
             this.runningThread = Thread.currentThread();
         }
         openServerSocket();
+
+
+        // Setup rigged game
+        Scanner scanner = new Scanner(System.in);
+
+        System.out.print("Do you want to test a rigged game? (y/n) : ");
+        String riggedGame = scanner.nextLine();
+
+        if (riggedGame.equals("y")){
+            gameState = new GameState(true);
+            gameState.setRiggedGame();
+        } else {
+            gameState = new GameState(false);
+        }
+
+
         while(gameState.getPlayers().size() < 4){
             Socket clientSocket;
 
@@ -45,7 +62,7 @@ public class Server implements Runnable {
                         "Error accepting client connection", e);
             }
 
-            WorkerRunnable wr = new WorkerRunnable(clientSocket, this);
+            WorkerRunnable wr = new WorkerRunnable(clientSocket, this, gameState);
             runnables.add(wr);
             new Thread(runnables.get(runnables.size() - 1)).start();
         }
@@ -91,15 +108,17 @@ class WorkerRunnable implements Runnable{
 
     protected Socket clientSocket;
     protected final Server server;
+    protected final GameState gs;
 
     protected Player player = null;
     protected ObjectOutputStream oos = null;
 
     private volatile boolean mIsStopped = false;
 
-    public WorkerRunnable(Socket clientSocket, Server s) {
+    public WorkerRunnable(Socket clientSocket, Server s, GameState gs) {
         this.clientSocket = clientSocket;
         this.server = s;
+        this.gs = gs;
     }
 
     public void run() {
@@ -133,10 +152,15 @@ class WorkerRunnable implements Runnable{
 
                         // Pregame lobby for new players and updated for current
                         if (!newPlayer.getReady()){
-                            newPlayer.pid = players.size() + 1;
-
-                            player = newPlayer;
-                            server.addPlayer(newPlayer);
+                            if (!gs.isRiggedGame){
+                                newPlayer.pid = players.size() + 1;
+                                player = newPlayer;
+                                server.addPlayer(newPlayer);
+                            } else {
+                                server.gameState.howManyPlayers++;
+                                newPlayer = gs.getPlayer(server.gameState.howManyPlayers);
+                                player = newPlayer;
+                            }
 
                             oos.writeObject(newPlayer);
 
@@ -194,11 +218,57 @@ class WorkerRunnable implements Runnable{
                                 }
                             }
                         } else {
-                            System.out.println("GOTTA START NEW ROUND");
                             gs.tallyScores();
 
                             for (Player p : gs.getPlayers()){
                                 System.out.println("Player " + p.pid + " -- SCORE: " + p.score);
+                                gs.players.get(p.pid - 1).addToTotalScore();
+                            }
+
+                            System.out.println(gs.getScoreBoard());
+
+                            if (!gs.isAtOneHundredPoints()){
+
+                                System.out.println("Round" + gs.roundNumber + " is over, starting round " + (gs.roundNumber+1));
+                                gs.startNextRound();
+
+                                for (WorkerRunnable r : runnables){
+
+                                    // Send updated board to all players
+                                    r.sendMessage("ROUND " + gs.roundNumber + " is over, starting next round");
+                                    r.sendScoreSheet(gs.getScoreBoard());
+
+                                    if (r.player.pid == gs.whoseTurn){
+                                        r.sendGameState();
+                                    }
+                                }
+
+                            } else {
+                                System.out.println("Game Over...");
+
+                                Player winner = null;
+
+                                for (Player p : gs.getPlayers()){
+                                    if (winner == null){
+                                        winner = p;
+                                    } else if (winner.totalScore > p.totalScore){
+                                        winner = p;
+                                        System.out.println("COMPARE: " + winner.totalScore + " TO " + p.totalScore);
+                                    }
+                                }
+
+                                if (winner == null){
+                                    winner = gs.getPlayer(0);
+                                }
+
+                                for (WorkerRunnable r : runnables){
+
+                                    // Send updated board to all players
+                                    r.sendMessage("****** GAME IS OVER ******");
+                                    r.sendScoreSheet(gs.getFinalScoreBoard());
+                                    r.sendMessage("Player " + winner.pid + " is the winner!!!");
+                                    r.setStopped(true);
+                                }
                             }
                         }
 
@@ -228,6 +298,16 @@ class WorkerRunnable implements Runnable{
         try {
             if (oos != null){
                 oos.writeObject(new Message( "(Player " + p.pid + ") joined the lobby", 1));
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void sendMessage(String message){
+        try {
+            if (oos != null){
+                oos.writeObject(message);
             }
         } catch (IOException e) {
             e.printStackTrace();

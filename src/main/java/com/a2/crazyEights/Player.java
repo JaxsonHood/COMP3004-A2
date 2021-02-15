@@ -11,6 +11,7 @@ public class Player implements Serializable {
 
     protected ArrayList<Card> cards = new ArrayList<>();
     protected int score = 0;
+    protected int totalScore = 0;
 
     public void addCard(Card card){
         cards.add(card);
@@ -18,6 +19,10 @@ public class Player implements Serializable {
 
     public void removeCard(int i){
         cards.remove(i);
+    }
+
+    public void setCardList(ArrayList<Card> newCards){
+        cards = newCards;
     }
 
     public Card getCard(int i){
@@ -50,5 +55,13 @@ public class Player implements Serializable {
 
     public void clearScore(){
         score = 0;
+    }
+
+    public void addToTotalScore(){
+        totalScore += score;
+    }
+
+    public void clearCards(){
+        cards.clear();
     }
 }

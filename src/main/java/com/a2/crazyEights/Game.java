@@ -93,7 +93,7 @@ public class Game implements Serializable {
                         }
 
                         if (gs.whoseTurn != playerPid){
-                            System.out.println(" ");
+                            System.out.print(" ");
                         } else {
                             System.out.println(" --- Turn Started --- ");
 
@@ -113,6 +113,7 @@ public class Game implements Serializable {
                             // Used for handling twos
                             boolean canPlayCardsLocal = false;
                             ArrayList<Card> cardsToBePlayed = new ArrayList<>();
+                            ArrayList<Integer> choices = new ArrayList<>();
 
                             // Handles the twos
                             if (gs.howManyPlayed > 0 && gs.canPlayerPlayEnough(playerPid)){
@@ -134,9 +135,21 @@ public class Game implements Serializable {
 
                             // Get new updated player cards
                             player = gs.getPlayer(playerPid);
+                            playerPid = player.pid;
                             player.printCards();
 
                             boolean isCardSelected = false;
+
+
+                            //Choose to draw
+                            System.out.println("Do you want a draw a card? (y/n) : ");
+                            String chooseToDraw = scanner.nextLine();
+
+                            if (chooseToDraw.equals("y") && cardsDrawn == 0){
+                                gs.playerDrawCard(playerPid);
+                                player = gs.getPlayer(playerPid);
+                                player.printCards();
+                            }
 
                             // Get player to select a card
                             if (gs.canPlayCard(playerPid) && !gs.skipTurn){
@@ -152,8 +165,7 @@ public class Game implements Serializable {
 
                                             Card c = player.getCard(whichCard - 1);
 
-                                            if (c.isSuitOrRank(gs.topCard) || c.suit.equals(gs.getSuitToMatch()) || (cardsToBePlayed.size() > 0 &&
-                                                    c.isSuitOrRank(cardsToBePlayed.get(cardsToBePlayed.size() - 1)))){
+                                            if (c.isSuitOrRank(gs.topCard) || c.suit.equals(gs.getSuitToMatch()) || (cardsToBePlayed.size() > 0)){
 
                                                 System.out.println("\nYou selected: ");
                                                 c.print();
@@ -199,25 +211,35 @@ public class Game implements Serializable {
                                                     oos.writeObject(gs);
                                                 } else {
                                                     cardsToBePlayed.add(c);
+                                                    choices.add(whichCard - 1);
                                                     if (cardsToBePlayed.size() == gs.howManyPlayed){
                                                         canPlayCardsLocal = false;
+                                                        isCardSelected = true;
                                                     }
                                                 }
 
-                                                if (cardsToBePlayed.size() != 0 && cardsToBePlayed.size() >= gs.howManyPlayed){
+                                                if (cardsToBePlayed.size() != 0 && cardsToBePlayed.size() == gs.howManyPlayed){
 
-                                                    System.out.println("Send cards to server");
                                                     System.out.println("# of cards played: " + cardsToBePlayed.size());
+                                                    System.out.println("\n --- Turn Ended, Player " + gs.getNextTurn() + " is up! --- ");
                                                     isCardSelected = true;
-
-                                                    // TODO -- Check if there is a two in the cards chosen
 
                                                     if (gs.topCard.rank.equals("2") && !c.rank.equals("2")){
                                                         gs.clearHowManyPlayed();
                                                     }
 
-                                                    gs.playerRemoveCard(playerPid, whichCard - 1);
-                                                    gs.setTopCard(cardsToBePlayed.get(whichCard - 1));
+                                                    gs.setTopCard(c);
+
+                                                    // TODO -- Check if there is a two in the cards chosen
+                                                    for (int ch : choices){
+                                                        if (player.getCard(ch).rank.equals("2")){
+                                                            gs.setTopCard(player.getCard(ch));
+                                                            gs.setHowManyPlayed(2);
+                                                        }
+                                                    }
+
+                                                    //remove choices
+                                                    gs.removeChoices(playerPid, cardsToBePlayed);
                                                     gs.setNextTurn();
 
                                                     // So the ArrayLists get updated
@@ -231,6 +253,7 @@ public class Game implements Serializable {
 
                                     } catch (Exception e){
                                         System.out.println("Invalid Input...");
+                                        System.out.println(e.getMessage());
                                     }
                                 }
                             } else {
