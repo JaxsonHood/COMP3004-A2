@@ -47,7 +47,7 @@ public class Server implements Runnable {
         }
 
 
-        while(gameState.getPlayers().size() < 4){
+        while(gameState.getPlayers().size() <= 4){
             Socket clientSocket;
 
             try {
@@ -206,7 +206,7 @@ class WorkerRunnable implements Runnable{
                         GameState gs = (GameState) o;
                         server.setGameState(gs);
 
-                        if (gs.isRoundRunning() && gs.getCanAnyonePlay()){
+                        if (gs.isRoundRunning() && gs.getCanAnyonePlay() && !(gs.getPlayer(player.pid).cards.size() < 1)){
                             // Send game to next player
                             for (WorkerRunnable r : runnables){
 

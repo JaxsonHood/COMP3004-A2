@@ -127,7 +127,7 @@ public class Game implements Serializable {
                             int cardsDrawn = 0;
 
                             // Draw a card until player can play a card
-                            while (!gs.canPlayCard(playerPid) && cardsDrawn < 3 && gs.howManyPlayed == 0){
+                            while (!gs.canPlayCard(playerPid) && cardsDrawn < 3){
                                 gs.playerDrawCard(playerPid);
                                 cardsDrawn++;
                                 System.out.println( cardsDrawn + " card(s) drawn");
@@ -140,10 +140,13 @@ public class Game implements Serializable {
 
                             boolean isCardSelected = false;
 
+                            String chooseToDraw = "";
 
-                            //Choose to draw
-                            System.out.println("Do you want a draw a card? (y/n) : ");
-                            String chooseToDraw = scanner.nextLine();
+                            if (cardsDrawn < 1 && gs.howManyPlayed < 1){
+                                //Choose to draw
+                                System.out.println("Do you want a draw a card? (y/n) : ");
+                                chooseToDraw = scanner.nextLine();
+                            }
 
                             if (chooseToDraw.equals("y") && cardsDrawn == 0){
                                 gs.playerDrawCard(playerPid);
@@ -165,7 +168,7 @@ public class Game implements Serializable {
 
                                             Card c = player.getCard(whichCard - 1);
 
-                                            if (c.isSuitOrRank(gs.topCard) || c.suit.equals(gs.getSuitToMatch()) || (cardsToBePlayed.size() > 0)){
+                                            if (c.isSuitOrRank(gs.topCard) || c.suit.equals(gs.getSuitToMatch()) || (cardsToBePlayed.size() > 0) || c.rank.equals("8")){
 
                                                 System.out.println("\nYou selected: ");
                                                 c.print();

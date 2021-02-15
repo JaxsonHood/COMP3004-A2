@@ -177,6 +177,12 @@ public class GameState implements Serializable {
             }
         }
 
+        for (Card c : p.cards){
+            if (c.rank.equals("8")){
+                return true;
+            }
+        }
+
         return false;
     }
 
@@ -439,15 +445,25 @@ public class GameState implements Serializable {
             System.out.println("Enter cards for player " + (i+1) + " ex. 2D,3S,7S : ");
             String cards = s.nextLine();
 
-            String[] clist = cards.replaceAll("\\s", "").split(",");
+            Player p = new Player();
 
-            for (String ns : clist){
-                ncl.add(new Card(Character.toString(ns.charAt(0)), Character.toString(ns.charAt(1))));
+            if (cards.length() > 2){
+                String[] clist = cards.replaceAll("\\s", "").split(",");
+
+                for (String ns : clist){
+                    if (ns.length() < 3){
+                        ncl.add(new Card(Character.toString(ns.charAt(0)), Character.toString(ns.charAt(1))));
+                    } else {
+                        ncl.add(new Card((Character.toString(ns.charAt(0))+Character.toString(ns.charAt(1))), Character.toString(ns.charAt(2))));
+                    }
+                }
+
+                p.setCardList(ncl);
+            } else {
+                p.addCard(new Card(Character.toString(cards.charAt(0)), Character.toString(cards.charAt(1))));
             }
 
-            Player p = new Player();
             p.pid = i + 1;
-            p.setCardList(ncl);
             players.add(p);
         }
 
@@ -468,7 +484,11 @@ public class GameState implements Serializable {
         String[] clist = ss.replaceAll("\\s", "").split(",");
 
         for (String ns : clist){
-            allCards.add(new Card(Character.toString(ns.charAt(0)), Character.toString(ns.charAt(1))));
+            if (ns.length() < 3){
+                allCards.add(new Card(Character.toString(ns.charAt(0)), Character.toString(ns.charAt(1))));
+            } else {
+                allCards.add(new Card((Character.toString(ns.charAt(0))+Character.toString(ns.charAt(1))), Character.toString(ns.charAt(2))));
+            }
         }
 
         System.out.println("Ready to start games");
