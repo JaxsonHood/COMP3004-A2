@@ -470,5 +470,7 @@ public class GameState implements Serializable {
         for (String ns : clist){
             allCards.add(new Card(Character.toString(ns.charAt(0)), Character.toString(ns.charAt(1))));
         }
+
+        System.out.println("Ready to start games");
     }
 }
